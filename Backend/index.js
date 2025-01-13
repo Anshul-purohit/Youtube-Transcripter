@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const qs = require('qs'); 
+const OpenAI = require('openai');
 require('dotenv').config();
 
 const app = express();
@@ -58,6 +59,33 @@ app.post('/get-transcript', async (req, res) => {
     } catch (error) {
         console.error('Error fetching transcript:', error.message);
         res.status(500).json({ error: 'Failed to fetch transcript. Check your API subscription or inputs.' });
+    }
+});
+
+app.post('/summarize-transcript', async (req, res) => {
+    const { transcript } = req.body;
+
+    if (!transcript) {
+        return res.status(400).json({ error: 'Transcript is required for summarization.' });
+    }
+
+    const options = {
+        method: 'POST',
+        url: 'https://api-inference.huggingface.co/models/facebook/bart-large-cnn',
+        headers: {
+            'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+            'Content-Type': 'application/json'
+        },
+        data: JSON.stringify({ inputs: transcript })
+    };
+
+    try {
+        const response = await axios.request(options);
+        const summary = response.data[0]?.summary_text || 'No summary available.';
+        res.json({ summary });
+    } catch (error) {
+        console.error('Error generating summary:', error.message);
+        res.status(500).json({ error: 'Failed to generate summary. Please check your API quota or try again later.' });
     }
 });
 
